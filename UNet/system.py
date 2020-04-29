@@ -9,7 +9,7 @@ from transform import UNetTransform
 from torch.utils.data import DataLoader
 
 class UNetSystem(pl.LightningModule):
-    def __init__(self, dataset_path, criteria, in_channel, num_class, batch_size):
+    def __init__(self, dataset_path, criteria, in_channel, num_class, batch_size, checkpoint):
         super(UNetSystem, self).__init__()
         use_cuda = torch.cuda.is_available() and True
         self.device = torch.device("cuda" if use_cuda else "cpu")
@@ -17,6 +17,7 @@ class UNetSystem(pl.LightningModule):
         self.model = UNetModel(in_channel, num_class).to(self.device, dtype=torch.float)
         self.criteria = criteria
         self.batch_size = batch_size
+        self.checkpoint = checkpoint
 
     def forward(self, x):
         x = self.model(x)
@@ -43,6 +44,9 @@ class UNetSystem(pl.LightningModule):
 
     def validation_epoch_end(self, outputs):
         avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
+
+        self.checkpoint(avg_loss.item(), seld.model)
+
         tensorboard_logs = {"val_loss" : avg_loss}
         return {"avg_val_loss" : avg_loss, "log" : tensorboard_logs}
 
