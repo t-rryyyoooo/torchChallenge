@@ -1,14 +1,14 @@
 from system import UNetSystem
 import pytorch_lightning as pl
 
-dataset_path = "/Users/tanimotoryou/Documents/lab/kidney/aligned/test/image"
+dataset_path = "/home/vmlab/Desktop/data/patch/label3d/image"
 criteria = {
-        "train" : ["000", "040", "135"], 
-        "val" : ["002", "056"], 
+        "train" : ["000", "001", "003", "006"], 
+        "val" : ["002", "004"]
         }
-in_channel = 3
+in_channel = 5
 num_class = 3
-batch_size = 15
+batch_size = 18
 
 
 system = UNetSystem(
@@ -19,6 +19,6 @@ system = UNetSystem(
         batch_size = batch_size
         )
 
-trainer = pl.Trainer()
+trainer = pl.Trainer(num_sanity_val_steps=5)
 trainer.fit(system)
 

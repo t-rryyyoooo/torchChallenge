@@ -45,7 +45,7 @@ class AffineTransform(object):
 class GetArrayFromImage(object):
     def __call__(self, image, label):
         imageArray = sitk.GetArrayFromImage(image)
-        labelArray = sitk.GetArrayFromImage(label)
+        labelArray = sitk.GetArrayFromImage(label).astype(int)
 
         if image.GetDimension() != 3:
             imageArray = imageArray[..., np.newaxis]

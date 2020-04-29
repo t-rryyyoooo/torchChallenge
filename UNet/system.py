@@ -11,8 +11,10 @@ from torch.utils.data import DataLoader
 class UNetSystem(pl.LightningModule):
     def __init__(self, dataset_path, criteria, in_channel, num_class, batch_size):
         super(UNetSystem, self).__init__()
+        use_cuda = torch.cuda.is_available() and True
+        self.device = torch.device("cuda" if use_cuda else "cpu")
         self.dataset_path = dataset_path
-        self.model = UNetModel(in_channel, num_class)
+        self.model = UNetModel(in_channel, num_class).to(self.device, dtype=torch.float)
         self.criteria = criteria
         self.batch_size = batch_size
 
@@ -23,6 +25,8 @@ class UNetSystem(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         image, label = batch
+        image = image.to(self.device, dtype=torch.float)
+        label = label.to(self.device, dtype=torch.long)
         y_pred = self.forward(image)
         loss = nn.functional.cross_entropy(y_pred, label)
         tensorboard_logs = {"train_loss" : loss }
@@ -31,9 +35,16 @@ class UNetSystem(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         image, label = batch
+        image = image.to(self.device, dtype=torch.float)
+        label = label.to(self.device, dtype=torch.long)
         out = self.forward(image)
         loss = nn.functional.cross_entropy(out, label)
         return {"val_loss" : loss}
+
+    def validation_epoch_end(self, outputs):
+        avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
+        tensorboard_logs = {"val_loss" : avg_loss}
+        return {"avg_val_loss" : avg_loss, "log" : tensorboard_logs}
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters())
@@ -58,7 +69,8 @@ class UNetSystem(pl.LightningModule):
         train_loader = DataLoader(
                 train_dataset ,
                 shuffle=True, 
-                batch_size = self.batch_size
+                batch_size = self.batch_size, 
+                num_workers = 6
                 )
 
         return train_loader
@@ -74,7 +86,8 @@ class UNetSystem(pl.LightningModule):
 
         val_loader = DataLoader(
                 val_dataset, 
-                batch_size = self.batch_size
+                batch_size = self.batch_size,
+                num_workers = 6
                 )
 
         return val_loader
