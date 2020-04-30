@@ -7,17 +7,21 @@ from model import UNetModel
 from dataset import UNetDataset
 from transform import UNetTransform
 from torch.utils.data import DataLoader
+from utils import DICE
 
 class UNetSystem(pl.LightningModule):
-    def __init__(self, dataset_path, criteria, in_channel, num_class, batch_size, checkpoint):
+    def __init__(self, dataset_path, criteria, in_channel, num_class, batch_size, checkpoint, num_workers):
         super(UNetSystem, self).__init__()
         use_cuda = torch.cuda.is_available() and True
         self.device = torch.device("cuda" if use_cuda else "cpu")
         self.dataset_path = dataset_path
-        self.model = UNetModel(in_channel, num_class).to(self.device, dtype=torch.float)
+        self.num_class = num_class
+        self.model = UNetModel(in_channel, self.num_class).to(self.device, dtype=torch.float)
         self.criteria = criteria
         self.batch_size = batch_size
         self.checkpoint = checkpoint
+        self.num_workers = num_workers
+        self.DICE = DICE(self.num_class)
 
     def forward(self, x):
         x = self.model(x)
@@ -28,8 +32,13 @@ class UNetSystem(pl.LightningModule):
         image, label = batch
         image = image.to(self.device, dtype=torch.float)
         label = label.to(self.device, dtype=torch.long)
-        y_pred = self.forward(image)
-        loss = nn.functional.cross_entropy(y_pred, label)
+
+        pred = self.forward(image)
+
+        pred_onehot = torch.eye(self.num_class)[pred.argmax(dim=1)]
+        label_onehot = torch.eye(self.num_class)[label]
+
+        loss = nn.functional.cross_entropy(pred, label)
         tensorboard_logs = {"train_loss" : loss }
         
         return {"loss" : loss, "log" : tensorboard_logs}
@@ -38,17 +47,17 @@ class UNetSystem(pl.LightningModule):
         image, label = batch
         image = image.to(self.device, dtype=torch.float)
         label = label.to(self.device, dtype=torch.long)
-        out = self.forward(image)
-        loss = nn.functional.cross_entropy(out, label)
+        pred = self.forward(image)
+        loss = nn.functional.cross_entropy(pred, label)
         return {"val_loss" : loss}
 
     def validation_epoch_end(self, outputs):
         avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
 
-        self.checkpoint(avg_loss.item(), seld.model)
+        self.checkpoint(avg_loss.item(), self.model)
 
         tensorboard_logs = {"val_loss" : avg_loss}
-        return {"avg_val_loss" : avg_loss, "log" : tensorboard_logs}
+        return {"avg_val_loss" : avg_loss, "log" : tensorboard_logs, "progress_bar" : tensorboard_logs}
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters())
@@ -74,7 +83,7 @@ class UNetSystem(pl.LightningModule):
                 train_dataset ,
                 shuffle=True, 
                 batch_size = self.batch_size, 
-                num_workers = 6
+                num_workers = self.num_workers
                 )
 
         return train_loader
@@ -91,7 +100,7 @@ class UNetSystem(pl.LightningModule):
         val_loader = DataLoader(
                 val_dataset, 
                 batch_size = self.batch_size,
-                num_workers = 6
+                num_workers = self.num_workers
                 )
 
         return val_loader

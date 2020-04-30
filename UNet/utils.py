@@ -1,6 +1,7 @@
 import SimpleITK as sitk
 import numpy as np
 from pathlib import Path
+import torch
 
 def separateData(dataset_path, criteria, phase): 
     dataset = []
@@ -58,5 +59,40 @@ def getMinimumValue(image):
     minmax = sitk.MinimumMaximumImageFilter()
     minmax.Execute(image)
     return minmax.GetMinimum()
+
+class DICE():
+    def __init__(self, num_class):
+        self.num_class = num_class
+        """
+        Required : not onehot
+        """
+
+    def compute(self, true, pred):
+        eps = 10**-9
+        assert true.size() == pred.size()
+
+        """
+        intersection = (true * pred).sum()
+        print(intersection)
+        union = (true * true).sum() + (pred * pred).sum()
+        print(union)
+        dice = (2 * intersection) / (union + eps)
+        """
+        intersection = (true == pred).sum()
+        union = (true != 0).sum() + (pred != 0).sum()
+        dice = 2 * intersection / (union + eps)
+
+        return dice
+
+    def computePerClass(self, true, pred):
+        DICE = []
+        for x in range(self.num_class):
+            true_part = (true == x).int()
+            pred_part = (pred == x).int()
+
+            dice = self.compute(true_part, pred_part)
+            DICE.append(dice)
+
+        return DICE
 
 
