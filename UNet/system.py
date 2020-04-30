@@ -21,7 +21,7 @@ class UNetSystem(pl.LightningModule):
         self.batch_size = batch_size
         self.checkpoint = checkpoint
         self.num_workers = num_workers
-        self.DICE = DICE(self.num_class)
+        self.DICE = DICE(self.num_class, self.device)
 
     def forward(self, x):
         x = self.model(x)
@@ -38,25 +38,51 @@ class UNetSystem(pl.LightningModule):
         pred_onehot = torch.eye(self.num_class)[pred.argmax(dim=1)]
         label_onehot = torch.eye(self.num_class)[label]
 
+        bg_dice, kidney_dice, cancer_dice = self.DICE.computePerClass(label_onehot, pred_onehot)
+
         loss = nn.functional.cross_entropy(pred, label)
-        tensorboard_logs = {"train_loss" : loss }
+        tensorboard_logs = {
+                "train_loss" : loss, 
+                "kidney_dice" : kidney_dice, 
+                "cancer_dice" : cancer_dice
+                }
         
-        return {"loss" : loss, "log" : tensorboard_logs}
+        return {"loss" : loss, "log" : tensorboard_logs, "progress_bar" : tensorboard_logs}
 
     def validation_step(self, batch, batch_idx):
         image, label = batch
         image = image.to(self.device, dtype=torch.float)
         label = label.to(self.device, dtype=torch.long)
         pred = self.forward(image)
+
+        pred_onehot = torch.eye(self.num_class)[pred.argmax(dim=1)]
+        label_onehot = torch.eye(self.num_class)[label]
+
+        bg_dice, kidney_dice, cancer_dice = self.DICE.computePerClass(label_onehot, pred_onehot)
+
         loss = nn.functional.cross_entropy(pred, label)
-        return {"val_loss" : loss}
+        tensorboard_logs = {
+                "val_loss" : loss, 
+                "val_kidney_dice" : kidney_dice, 
+                "val_cancer_dice" : cancer_dice
+                }
+ 
+        loss = nn.functional.cross_entropy(pred, label)
+        return {"val_loss" : loss, "log" : tensorboard_logs, "progress_bar" : tensorboard_logs}
 
     def validation_epoch_end(self, outputs):
         avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
+        avg_kidney_dice = torch.stack([x["log"]["val_kidney_dice"] for x in outputs]).mean()
+        avg_cancer_dice = torch.stack([x["log"]["val_cancer_dice"] for x in outputs]).mean()
 
         self.checkpoint(avg_loss.item(), self.model)
 
-        tensorboard_logs = {"val_loss" : avg_loss}
+        tensorboard_logs = {
+                "val_loss" : avg_loss,
+                "val_avg_kidney_dice" : avg_kidney_dice, 
+                "val_avg_cancer_dice" : avg_cancer_dice
+                }
+
         return {"avg_val_loss" : avg_loss, "log" : tensorboard_logs, "progress_bar" : tensorboard_logs}
 
     def configure_optimizers(self):
