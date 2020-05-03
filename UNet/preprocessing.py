@@ -1,6 +1,6 @@
 import SimpleITK as sitk
 import numpy as np
-from utils import *
+from .utils import *
 
 class Compose(object):
     def __init__(self, transforms):

@@ -3,14 +3,14 @@ import pytorch_lightning as pl
 from pytorch_lightning import Trainer
 import torch
 from torch import nn
-from model import UNetModel
-from dataset import UNetDataset
-from transform import UNetTransform
+from .model import UNetModel
+from .dataset import UNetDataset
+from .transform import UNetTransform
 from torch.utils.data import DataLoader
-from utils import DICE
+from .utils import DICE
 
 class UNetSystem(pl.LightningModule):
-    def __init__(self, dataset_path, criteria, in_channel, num_class, batch_size, checkpoint, num_workers):
+    def __init__(self, dataset_path, criteria, in_channel, num_class, learning_rate, batch_size, checkpoint, num_workers):
         super(UNetSystem, self).__init__()
         use_cuda = torch.cuda.is_available() and True
         self.device = torch.device("cuda" if use_cuda else "cpu")
@@ -19,6 +19,7 @@ class UNetSystem(pl.LightningModule):
         self.model = UNetModel(in_channel, self.num_class).to(self.device, dtype=torch.float)
         self.criteria = criteria
         self.batch_size = batch_size
+        self.learning_rate = learning_rate
         self.checkpoint = checkpoint
         self.num_workers = num_workers
         self.DICE = DICE(self.num_class, self.device)
@@ -79,14 +80,14 @@ class UNetSystem(pl.LightningModule):
 
         tensorboard_logs = {
                 "val_loss" : avg_loss,
-                "val_avg_kidney_dice" : avg_kidney_dice, 
-                "val_avg_cancer_dice" : avg_cancer_dice
+                "val_kidney_dice" : avg_kidney_dice, 
+                "val_cancer_dice" : avg_cancer_dice
                 }
 
         return {"avg_val_loss" : avg_loss, "log" : tensorboard_logs, "progress_bar" : tensorboard_logs}
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters())
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
 
         return optimizer
 
