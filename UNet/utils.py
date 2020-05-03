@@ -78,24 +78,26 @@ class DICE():
         
         intersection = (true * pred).sum()
         union = (true * true).sum() + (pred * pred).sum()
-        dice = (2 * intersection) / (union + eps)
+        dice = (2. * intersection) / (union + eps)
         """
         intersection = (true == pred).sum()
         union = (true != 0).sum() + (pred != 0).sum()
-        dice = 2 * intersection / (union + eps)
+        dice = 2. * (intersection + eps) / (union + eps)
         """
-
+        
         return dice
 
     def computePerClass(self, true, pred):
         DICE = []
         for x in range(self.num_class):
+            """
+            true_part = (true == x).int()
+            pred_part = (pred == x).int()
+            """
             true_part = true[..., x]
             pred_part = pred[..., x]
-
             dice = self.compute(true_part, pred_part)
             DICE.append(dice)
 
         return DICE
-
 
