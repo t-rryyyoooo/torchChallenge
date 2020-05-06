@@ -2,9 +2,9 @@
 
 #Input
 readonly TRUE="$HOME/Desktop/data/kits19"
-readonly TEXT="$HOME/Desktop/kidney/alignedPerPatch/result"
-readonly RESULT="$HOME/Desktop/data/patch/256_256_3_cancer/segmentation_sqrtWeighted"
-readonly PREFIX="256_256_3_sqrtWeighted"
+readonly TEXT="$HOME/Desktop/data/result"
+readonly RESULT="$HOME/Desktop/data/patch/label3d/segmentation"
+readonly PREFIX="test"
 
 
 mkdir -p $TEXT
@@ -18,6 +18,7 @@ python3 caluculateDICE.py ${TRUE} ${RESULT} > $text
 if [ $? -eq 0 ]; then
  echo "Done."
  echo ${RESULT} >> $text
+ cat ${text}
 
 else
  echo "Fail"

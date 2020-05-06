@@ -71,7 +71,7 @@ def main(args):
             segmentedArray = model(imageArray)
             segmentedArray = segmentedArray.to("cpu").detach().numpy().astype(np.float)
             segmentedArray = np.squeeze(segmentedArray)
-            segmentedArray = np.argmax(segmentedArray, axis=-1).astype(np.uint8)
+            segmentedArray = np.argmax(segmentedArray, axis=0).astype(np.uint8)
             segmentedArrayList[i].append(segmentedArray)
 
     """ Restore module. """

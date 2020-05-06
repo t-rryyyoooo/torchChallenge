@@ -16,7 +16,7 @@
 	"num_workers" : 6,
 	"epoch" : 500,
 	"gpu_ids" : [0], 
-	"model_savepath" : "/home/vmlab/Desktop/data/modelweight/test"
+	"model_savepath" : "/home/vmlab/Desktop/data/modelweight/test2"
 }
 
 	

@@ -108,7 +108,7 @@ class UNetModel(nn.Module):
 
         self.segmentation = nn.Conv2d(64, nclasses, (1, 1), stride=1, dilation=1, padding=(0, 0))
 
-        #self.softmax = nn.Softmax2d()
+        self.softmax = nn.Softmax(dim=1)
 
     def forward(self, x):
         convResults = []
@@ -127,7 +127,7 @@ class UNetModel(nn.Module):
             x = expand(x, convResult)
 
         x = self.segmentation(x)
-        #x = self.softmax(x)
+        x = self.softmax(x)
 
         return x
 

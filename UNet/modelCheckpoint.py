@@ -16,7 +16,7 @@ class BestAndLatestModelCheckpoint(object):
             self.best_value = pred
 
             with open(self.best_path, "wb") as f:
-                print("Update best weight! loss : {}".format(self.best_value), flush=True)
+                #print("Update best weight! loss : {}".format(self.best_value), flush=True)
                 cloudpickle.dump(model, f)
 
         with open(self.latest_path, "wb") as f:

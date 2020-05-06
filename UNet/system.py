@@ -8,6 +8,7 @@ from .dataset import UNetDataset
 from .transform import UNetTransform
 from torch.utils.data import DataLoader
 from .utils import DICE
+from .loss import WeightedCategoricalCrossEntropy
 
 class UNetSystem(pl.LightningModule):
     def __init__(self, dataset_path, criteria, in_channel, num_class, learning_rate, batch_size, checkpoint, num_workers):
@@ -23,6 +24,7 @@ class UNetSystem(pl.LightningModule):
         self.checkpoint = checkpoint
         self.num_workers = num_workers
         self.DICE = DICE(self.num_class, self.device)
+        self.loss = WeightedCategoricalCrossEntropy("log", device=self.device)
 
     def forward(self, x):
         x = self.model(x)
@@ -34,21 +36,28 @@ class UNetSystem(pl.LightningModule):
         image = image.to(self.device, dtype=torch.float)
         label = label.to(self.device, dtype=torch.long)
 
-        pred = self.forward(image)
+        pred = self.forward(image).to(self.device)
+        pred_last = pred.permute(0, 2, 3, 1).to(self.device)
 
-        pred_onehot = torch.eye(self.num_class)[pred.argmax(dim=1)]
-        label_onehot = torch.eye(self.num_class)[label]
+        pred_onehot = torch.eye(self.num_class)[pred.argmax(dim=1)].to(self.device)
+        label_onehot = torch.eye(self.num_class)[label].to(self.device)
 
         bg_dice, kidney_dice, cancer_dice = self.DICE.computePerClass(label_onehot, pred_onehot)
 
-        loss = nn.functional.cross_entropy(pred, label)
+        #loss = nn.functional.cross_entropy(pred, label, reduction="none")
+        loss = self.loss(pred_last, label_onehot)
+
+
         tensorboard_logs = {
                 "train_loss" : loss, 
                 "kidney_dice" : kidney_dice, 
                 "cancer_dice" : cancer_dice
                 }
+        progress_bar = {
+                "train_loss" : loss
+                }
         
-        return {"loss" : loss, "log" : tensorboard_logs, "progress_bar" : tensorboard_logs}
+        return {"loss" : loss, "log" : tensorboard_logs}#, "progress_bar" : progress_bar}
 
     def validation_step(self, batch, batch_idx):
         image, label = batch
@@ -61,15 +70,20 @@ class UNetSystem(pl.LightningModule):
 
         bg_dice, kidney_dice, cancer_dice = self.DICE.computePerClass(label_onehot, pred_onehot)
 
-        loss = nn.functional.cross_entropy(pred, label)
+        loss = self.loss(pred_onehot, label_onehot)
+        #loss = nn.functional.cross_entropy(pred, label)
+
         tensorboard_logs = {
                 "val_loss" : loss, 
                 "val_kidney_dice" : kidney_dice, 
                 "val_cancer_dice" : cancer_dice
                 }
+        progress_bar= {
+                "val_loss" : loss, 
+                "val_cancer_dice" : cancer_dice
+                }
  
-        loss = nn.functional.cross_entropy(pred, label)
-        return {"val_loss" : loss, "log" : tensorboard_logs, "progress_bar" : tensorboard_logs}
+        return {"val_loss" : loss, "log" : tensorboard_logs}#, "progress_bar" : progress_bar}
 
     def validation_epoch_end(self, outputs):
         avg_loss = torch.stack([x["val_loss"] for x in outputs]).mean()
@@ -83,8 +97,13 @@ class UNetSystem(pl.LightningModule):
                 "val_kidney_dice" : avg_kidney_dice, 
                 "val_cancer_dice" : avg_cancer_dice
                 }
+        progress_bar = {
+                "val_loss" : avg_loss,
+                "val_cancer_dice" : avg_cancer_dice
+                }
 
-        return {"avg_val_loss" : avg_loss, "log" : tensorboard_logs, "progress_bar" : tensorboard_logs}
+
+        return {"avg_val_loss" : avg_loss, "log" : tensorboard_logs, "progress_bar" : progress_bar}
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.learning_rate)
@@ -107,7 +126,7 @@ class UNetSystem(pl.LightningModule):
                 )
 
         train_loader = DataLoader(
-                train_dataset ,
+                train_dataset,
                 shuffle=True, 
                 batch_size = self.batch_size, 
                 num_workers = self.num_workers
