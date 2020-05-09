@@ -4,8 +4,8 @@
 readonly DATA="$HOME/Desktop/data/kits19"
 readonly CT="/imaging.nii.gz"
 readonly LABEL="/segmentation.nii.gz"
-readonly SAVE="$HOME/Desktop/data/patch/label3d/segmentation"
-readonly WEIGHT="$HOME/Desktop/data/modelweight/test2/latest.pkl"
+readonly SAVE="$HOME/Desktop/data/patch/label3d/segmentation_loss"
+readonly WEIGHT="$HOME/Desktop/data/modelweight/test_loss/latest.pkl"
 
 NUMBERS=(001 017 020 022 043 082 094 115 120 137 173 174 205)
 #NUMBERS=(019 023 054 093 096 123 127 136 141 153 188 191 201)

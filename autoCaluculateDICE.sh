@@ -3,7 +3,7 @@
 #Input
 readonly TRUE="$HOME/Desktop/data/kits19"
 readonly TEXT="$HOME/Desktop/data/result"
-readonly RESULT="$HOME/Desktop/data/patch/label3d/segmentation"
+readonly RESULT="$HOME/Desktop/data/patch/label3d/segmentation_loss"
 readonly PREFIX="test"
 
 
