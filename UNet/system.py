@@ -64,13 +64,14 @@ class UNetSystem(pl.LightningModule):
         image = image.to(self.device, dtype=torch.float)
         label = label.to(self.device, dtype=torch.long)
         pred = self.forward(image)
+        pred_last = pred.permute(0, 2, 3, 1).to(self.device)
 
         pred_onehot = torch.eye(self.num_class)[pred.argmax(dim=1)]
         label_onehot = torch.eye(self.num_class)[label]
 
         bg_dice, kidney_dice, cancer_dice = self.DICE.computePerClass(label_onehot, pred_onehot)
 
-        loss = self.loss(pred_onehot, label_onehot)
+        loss = self.loss(pred_last, label_onehot)
         #loss = nn.functional.cross_entropy(pred, label)
 
         tensorboard_logs = {
